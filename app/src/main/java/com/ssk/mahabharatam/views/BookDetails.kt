@@ -1,11 +1,11 @@
 package com.ssk.mahabharatam.views
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -70,14 +70,16 @@ class BookDetails : ComponentActivity() {
                     ) {
                         LazyVerticalGrid(
                             contentPadding = PaddingValues(10.dp),
-                            columns = GridCells.Fixed(2)
+                            columns = GridCells.Adaptive(minSize = 150.dp)
                         ) {
                             val verses = book.getVerses()
                             val chapters = verses[verses.size - 1].chapter
+
                             items(chapters) {
-                                val chapter = it + 1
+                                val chapterNumber = it + 1
+
                                 ItemCard(
-                                    "Chapter $chapter",
+                                    "Chapter $chapterNumber",
                                     Modifier
                                         .fillMaxSize()
                                         .padding(2.dp)
@@ -89,7 +91,11 @@ class BookDetails : ComponentActivity() {
                                         .align(Alignment.Center)
                                         .padding(0.dp, 20.dp),
                                 ) {
-
+                                    val intent = Intent(this@BookDetails, ChapterDetails::class.java).also {
+                                        it.putExtra("book_number", bookNumber)
+                                        it.putExtra("chapter_number", chapterNumber)
+                                    }
+                                    startActivity(intent)
                                 }
 
                             }

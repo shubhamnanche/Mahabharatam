@@ -50,6 +50,7 @@ android {
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -103,6 +104,12 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+
+    implementation(libs.com.google.accompanist.accompanist.pager)
+    implementation(libs.androidx.foundation)
+    implementation(libs.accompanist.pager.indicators)
+
+    implementation(libs.compose.pager.indicator)
 
     implementation(libs.hilt.core)
     implementation(libs.hilt.android)

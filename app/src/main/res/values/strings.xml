@@ -25,6 +25,7 @@
     <string name="app_name_sanskrit">महाभारतम्।</string>
     <string name="search">Search</string>
     <string name="title_activity_book_details">BookDetails</string>
+    <string name="title_activity_chapter_details">ChapterDetails</string>
 
 
 </resources>
