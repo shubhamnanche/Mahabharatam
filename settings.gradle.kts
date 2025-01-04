@@ -9,6 +9,9 @@ pluginManagement {
         }
         mavenCentral()
         gradlePluginPortal()
+        maven {
+            url = uri("https://maven.google.com")
+        }
     }
 }
 dependencyResolutionManagement {
@@ -16,9 +19,12 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven {
+            url = uri("https://maven.google.com")
+        }
     }
 }
 
-rootProject.name = "Mahābhāratam"
+rootProject.name = "Mahabharatam"
 include(":app")
  
