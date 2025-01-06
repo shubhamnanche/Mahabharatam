@@ -26,6 +26,7 @@
     <string name="search">Search</string>
     <string name="title_activity_book_details">BookDetails</string>
     <string name="title_activity_chapter_details">ChapterDetails</string>
+    <string name="no_results_found">No results found.</string>
 
 
 </resources>

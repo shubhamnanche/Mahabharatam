@@ -19,12 +19,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.ssk.mahabharatam.source
+package com.ssk.mahabharatam.data.repository.source
 
 import android.app.Activity
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.ssk.mahabharatam.models.Verse
+import com.ssk.mahabharatam.data.models.Verse
 import java.io.BufferedReader
 import java.io.InputStreamReader
 

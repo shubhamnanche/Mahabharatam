@@ -18,6 +18,7 @@ keystoreProperties.load(FileInputStream(rootProject.file("keystore.properties"))
 android {
     namespace = "com.ssk.mahabharatam"
     compileSdk = 35
+//    buildToolsVersion = "36.0.0-rc3"
 
     signingConfigs {
         register("release") {
@@ -110,6 +111,8 @@ dependencies {
     implementation(libs.accompanist.pager.indicators)
 
     implementation(libs.compose.pager.indicator)
+
+    implementation(libs.composescrollbars)
 
     implementation(libs.hilt.core)
     implementation(libs.hilt.android)

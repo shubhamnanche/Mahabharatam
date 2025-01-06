@@ -7,3 +7,8 @@ plugins {
     alias(libs.plugins.kotlin.kapt) apply false
     alias(libs.plugins.google.devtools.ksp) apply false
 }
+buildscript {
+    dependencies {
+        classpath(libs.android.tools.build.gradle)
+    }
+}

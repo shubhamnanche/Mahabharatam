@@ -1,4 +1,4 @@
-package com.ssk.mahabharatam.models
+package com.ssk.mahabharatam.data.models
 
 data class Verse(
     val book: Int,

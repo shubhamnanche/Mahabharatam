@@ -3,7 +3,7 @@
  * accessible way to explore the epic's timeless stories, teachings,
  * and characters.
  * This file is part of the Mahabharatam app.
- * Copyright (C) 2024  Shubham Nanche <https://github.com/shubhamnanche>
+ * Copyright (C) 2025  Shubham Nanche <https://github.com/shubhamnanche>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,13 +19,26 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.ssk.mahabharatam.source
+package com.ssk.mahabharatam.utils.frequency
 
-import android.app.Activity
-import jakarta.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.coroutines.CoroutineContext
 
-class BookFactory @Inject constructor(private val activity: Activity) {
-    fun createBook(bookFileName: String): Book {
-        return Book(activity, bookFileName)
+class Debouncer(
+    private val delayMs: Long,
+    private val coroutineContext: CoroutineContext = Dispatchers.Main
+) {
+    private var job: Job? = null
+
+    fun debounce(action: suspend () -> Unit) {
+        job?.cancel() // Cancel any ongoing task
+        job = CoroutineScope(coroutineContext).launch {
+            delay(delayMs) // Wait for the debounce delay
+            action()
+        }
     }
 }

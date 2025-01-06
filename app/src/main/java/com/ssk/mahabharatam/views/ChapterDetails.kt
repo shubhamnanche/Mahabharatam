@@ -1,49 +1,59 @@
+/**
+ * Mahabharatam is a comprehensive Android app offering an engaging and
+ * accessible way to explore the epic's timeless stories, teachings,
+ * and characters.
+ * This file is part of the Mahabharatam app.
+ * Copyright (C) 2024  Shubham Nanche <https://github.com/shubhamnanche>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package com.ssk.mahabharatam.views
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.ssk.mahabharatam.models.Verse
-import com.ssk.mahabharatam.source.Book
-import com.ssk.mahabharatam.source.BookFactory
-import com.ssk.mahabharatam.source.Mahabharatam
-import com.ssk.mahabharatam.views.ui.theme.MahabharatamTheme
+import com.ssk.mahabharatam.data.models.Verse
+import com.ssk.mahabharatam.data.repository.settings.SettingsRepository
+import com.ssk.mahabharatam.data.repository.source.Book
+import com.ssk.mahabharatam.data.repository.source.BookFactory
+import com.ssk.mahabharatam.ui.theme.MahabharatamTheme
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
 import kotlinx.coroutines.launch
@@ -59,8 +69,12 @@ class ChapterDetails : ComponentActivity() {
 
     var chapterNumber by Delegates.notNull<Int>()
     var bookNumber by Delegates.notNull<Int>()
+    var verseNumber by Delegates.notNull<Int>()
 
     lateinit var verses: List<Verse>
+
+    @Inject
+    lateinit var settingsRepo: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,14 +82,23 @@ class ChapterDetails : ComponentActivity() {
 
         bookNumber = intent.getIntExtra("book_number", 1)
         chapterNumber = intent.getIntExtra("chapter_number", 1)
+        verseNumber = intent.getIntExtra("verse_number", 1)
 
-        book = bookFactory.createBook(Mahabharatam.getBookNames()[bookNumber - 1])
+        book = bookFactory.createBook(bookNumber)
         verses = book.getVerses(chapterNumber)
 
         setContent {
             MahabharatamTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val pagerState = rememberPagerState(pageCount = { verses.size })
+                    val clampedInitialPage =
+                        verses.indexOf(verses.find {
+                            it.shloka == verseNumber
+                        }).coerceIn(0, verses.size - 1)
+
+                    val pagerState = rememberPagerState(
+                        initialPage = clampedInitialPage,
+                        pageCount = { verses.size }
+                    )
 
                     Column(
                         modifier = Modifier
@@ -88,6 +111,11 @@ class ChapterDetails : ComponentActivity() {
                             state = pagerState,
                             modifier = Modifier.weight(1f)
                         ) { page ->
+
+                            val verse = verses[page]
+
+                            settingsRepo.lastReadVerse = verse.shloka
+
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -95,10 +123,15 @@ class ChapterDetails : ComponentActivity() {
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = verses[page].text,
+                                    text = verse.text,
                                     style = MaterialTheme.typography.titleLarge,
                                     color = Color.White,
-                                    modifier = Modifier.padding(16.dp),
+                                    modifier = Modifier
+                                        .scrollable(
+                                            state = rememberScrollState(0),
+                                            orientation = Orientation.Vertical
+                                        )
+                                        .padding(16.dp),
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -135,7 +168,7 @@ class ChapterDetails : ComponentActivity() {
                             }
 
                             Text(
-                                text = "$bookNumber.$chapterNumber.${pagerState.currentPage + 1}",
+                                text = "$bookNumber.$chapterNumber.${verses[pagerState.currentPage].shloka}",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 textAlign = TextAlign.Center

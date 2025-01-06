@@ -37,11 +37,11 @@
 -keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
 
 # Preserve models
-#-keep class  com.ssk.mahabharatam.models.**
-#-keepclassmembers class  com.ssk.mahabharatam.models.** {
+#-keep class com.ssk.mahabharatam.models.**
+#-keepclassmembers class com.ssk.mahabharatam.models.** {
 # !transient <fields>;
 #}
--keep class com.ssk.mahabharatam.models.** {
+-keep class com.ssk.mahabharatam.data.models.** {
     !transient <fields>;
 }
 
@@ -58,3 +58,7 @@
     java.lang.Object writeReplace();
 }
 
+# Preserve the SharedPreferences types
+-keep class com.ssk.mahabharatam.utils.SharedPreferenceDelegates {
+    *;
+}

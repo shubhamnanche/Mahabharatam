@@ -1,11 +1,11 @@
-package com.ssk.mahabharatam.source
+package com.ssk.mahabharatam.data.repository.source
 
-object Mahabharatam {
+internal object Mahabharatam {
     //parvas
     private var bookNames: List<String>? = null
 
     fun getBookNames(): List<String> {
-        if (bookNames == null) {
+        if (bookNames.isNullOrEmpty()) {
             val names = mutableListOf<String>()
             val name = "mahabharata_book"
             for (i in 1..18) {

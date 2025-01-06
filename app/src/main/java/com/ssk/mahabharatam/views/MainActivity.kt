@@ -27,10 +27,13 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -39,10 +42,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Divider
+import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -60,26 +66,36 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ripple
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ssk.mahabharatam.R
-import com.ssk.mahabharatam.source.BookFactory
-import com.ssk.mahabharatam.source.Mahabharatam
+import com.ssk.mahabharatam.data.models.Verse
+import com.ssk.mahabharatam.data.repository.settings.SettingsRepository
+import com.ssk.mahabharatam.data.repository.source.Book
+import com.ssk.mahabharatam.data.repository.source.BookFactory
 import com.ssk.mahabharatam.ui.theme.MahabharatamTheme
+import com.ssk.mahabharatam.utils.frequency.Debouncer
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -88,15 +104,19 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var bookFactory: BookFactory
-
+    lateinit var books: List<Book>
     private lateinit var bookNames: List<String>
+
+    @Inject
+    lateinit var settingsRepo: SettingsRepository
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        bookNames = Mahabharatam.getBookNames()
+        books = bookFactory.books
+        bookNames = bookFactory.getBookNames()
 
         setContent {
             MahabharatamTheme {
@@ -107,10 +127,26 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun MainScreen(modifier: Modifier = Modifier) {
+    private fun MainScreen() {
         var searchQuery by rememberSaveable { mutableStateOf("") }
         var expanded by rememberSaveable { mutableStateOf(false) }
         var menuExpanded by rememberSaveable { mutableStateOf(false) }
+        var loading by rememberSaveable { mutableStateOf(false) }
+
+        val debouncer = Debouncer(500, Dispatchers.IO)
+        var verses = listOf<Verse>()
+
+//        val scrollBarState = rememberScrollbarsState(
+//            config = ScrollbarsConfigDefaults,
+//            scrollType = ScrollbarsScrollType.Scroll(
+//                knobType = ScrollbarsStaticKnobType.Exact(
+//                    animationSpec = tween(
+//                        durationMillis = 1000, // Duration of 1 second
+//                        easing = FastOutSlowInEasing // Smooth acceleration and deceleration
+//                    )
+//                ), state = rememberScrollState()
+//            )
+//        )
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -138,8 +174,35 @@ class MainActivity : ComponentActivity() {
                     SearchBar(
                         inputField = {
                             SearchBarDefaults.InputField(query = searchQuery,
-                                onQueryChange = { searchQuery = it },
-                                onSearch = { expanded = false },
+                                onQueryChange = {
+                                    val trimmedQuery = it.trim()
+                                    searchQuery = trimmedQuery
+
+                                    if (trimmedQuery.isNotBlank()) {
+                                        loading = true // Set loading state immediately
+                                        debouncer.debounce {
+                                            // Perform the search and update the state
+                                            val filteredVerses = books.flatMap { book ->
+                                                book.getVerses().filter { verse ->
+                                                    verse.text.contains(
+                                                        trimmedQuery,
+                                                        ignoreCase = true
+                                                    )
+                                                }
+                                            }
+                                            // Update state on the main thread
+                                            withContext(Dispatchers.Main) {
+                                                verses = filteredVerses
+                                                loading = false
+                                            }
+                                        }
+                                    } else {
+                                        // Clear verses and reset loading state
+                                        verses = emptyList()
+                                        loading = false
+                                    }
+                                },
+                                onSearch = { },
                                 expanded = expanded,
                                 onExpandedChange = { expanded = it },
                                 placeholder = { Text(stringResource(R.string.search)) },
@@ -208,6 +271,66 @@ class MainActivity : ComponentActivity() {
 
                     ) {
 
+                        if (loading)
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primary,
+                                backgroundColor = MaterialTheme.colorScheme.background
+                            )
+
+                        if (verses.isNotEmpty()) {
+                            Text(
+                                verses.size.toString(),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(
+                                        color = MaterialTheme.colorScheme.surfaceContainer,
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                            )
+                        }
+
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                        ) {
+
+                            if (verses.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = getString(R.string.no_results_found),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textAlign = TextAlign.Center,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            } else {
+
+                                items(verses.size) {
+
+                                    val verse = verses[it]
+
+                                    VerseItem(
+                                        verseTitle = "${verse.book}.${verse.chapter}.${verse.shloka}",
+                                        verseText = verse.text
+                                    ) {
+                                        launchChapterDetails(
+                                            verse.book,
+                                            verse.chapter,
+                                            verse.shloka
+                                        )
+                                        settingsRepo.apply {
+                                            lastReadBook = verse.book
+                                            lastReadChapter = verse.chapter
+                                            lastReadChapter = verse.shloka
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+//                        Scrollbars()
                     }
 
                     LazyVerticalGrid(
@@ -217,11 +340,15 @@ class MainActivity : ComponentActivity() {
                     ) {
                         items(count = bookNames.size) { index ->
                             val bookNumber = index + 1
-                            ItemCard(
+                            BookItem(
                                 title = "Book $bookNumber",
-                                onClick = { launchBookDetails(bookNumber) },
+                                highlightItem = settingsRepo.lastReadBook == bookNumber,
+                                highlightColor = MaterialTheme.colorScheme.surfaceTint,
                                 modifier = Modifier
-                            )
+                            ) {
+                                launchBookDetails(bookNumber)
+                                settingsRepo.lastReadBook = bookNumber
+                            }
                         }
                     }
                 }
@@ -230,7 +357,71 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun ItemCard(title: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    fun VerseItem(
+        verseTitle: String,
+        verseText: String,
+        onClick: () -> Unit
+    ) {
+        val gradient = Brush.horizontalGradient(
+            colors = listOf(Color(0xFF8E2DE2), Color(0xFF4A00E0))
+        )
+
+        Card(
+            modifier = Modifier
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { onClick() },
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier
+                    .background(gradient)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.Start,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = verseTitle,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.White,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Divider(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    color = Color.White.copy(alpha = 0.5f),
+                    thickness = 1.dp
+                )
+                Text(
+                    text = verseText,
+                    fontSize = 14.sp,
+                    color = Color.White,
+                    textAlign = TextAlign.Justify,
+                    lineHeight = 20.sp,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        }
+    }
+
+    @Composable
+    fun BookItem(
+        title: String,
+        highlightItem: Boolean,
+        highlightColor: Color = MaterialTheme.colorScheme.surfaceTint,
+        modifier: Modifier = Modifier,
+        onClick: () -> Unit = {}
+    ) {
+        val containerColor by animateColorAsState(
+            targetValue = if (highlightItem) highlightColor else MaterialTheme.colorScheme.background,
+            animationSpec = tween(durationMillis = 300),
+            label = "ContainerAnimation"
+        )
         Card(
             shape = RoundedCornerShape(16.dp),
             modifier = modifier
@@ -242,7 +433,7 @@ class MainActivity : ComponentActivity() {
                 .shadow(8.dp, shape = RoundedCornerShape(16.dp)),
             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = containerColor,
                 contentColor = MaterialTheme.colorScheme.onBackground
             ),
             elevation = CardDefaults.cardElevation()
@@ -265,6 +456,17 @@ class MainActivity : ComponentActivity() {
         Log.d(TAG, "launching book $book...")
         val intent = Intent(this@MainActivity, BookDetails::class.java)
         intent.putExtra("book_number", book)
+        startActivity(intent)
+    }
+
+    private fun launchChapterDetails(book: Int, chapter: Int, verse: Int) {
+        Log.d(TAG, "launching book $book & chapter $chapter...")
+        val intent = Intent(this@MainActivity, ChapterDetails::class.java)
+        intent.apply {
+            putExtra("book_number", book)
+            putExtra("chapter_number", chapter)
+            putExtra("verse_number", verse)
+        }
         startActivity(intent)
     }
 
